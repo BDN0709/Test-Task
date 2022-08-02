@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <thread>
+#include <algorithm>
 #include <iostream>
 
 using namespace std;
@@ -11,7 +12,7 @@ inline const bool IsTextFile(const WIN32_FIND_DATAA& _File)
 {
     const string FullFileName = _File.cFileName;
 
-    return (FullFileName.find(".txt", FullFileName.size() - 5) != string::npos);
+    return (FullFileName.find(".cpp", FullFileName.size() - 5) != string::npos);
 }
 
 inline const bool ContainsSpecifedText(const string& _FullPath, const string& _Text)
@@ -29,7 +30,12 @@ inline const bool ContainsSpecifedText(const string& _FullPath, const string& _T
     return false;
 }
 
-inline const void FindTextFiles(const string& _Path)
+inline const void RemovePathesToTextFilesWithoutSpecifedText(vector <string>& PathesList, const string& _Text)
+{
+
+}
+
+inline const void FindPathesToTextFiles(const string& _Path, vector <string>& TextFilesList)
 {
     string newPath = _Path + "\\*.*";
 
@@ -46,16 +52,18 @@ inline const void FindTextFiles(const string& _Path)
     do
     {
         if (FindedFile.dwFileAttributes == FILE_ATTRIBUTE_DIRECTORY && FindedFile.cFileName[0] != '.')
-            FindTextFiles(_Path + "\\" + FindedFile.cFileName);
+            FindPathesToTextFiles(_Path + "\\" + FindedFile.cFileName, TextFilesList);
         else if (FindedFile.cFileName[0] == '.')
             continue;
         else
-        {
             if (IsTextFile(FindedFile))
+            {
                 cout << _Path << '\\' << FindedFile.cFileName << endl;
-        }
+                TextFilesList.push_back(_Path + '\\' + FindedFile.cFileName);
+            }
 
     } while (FindNextFileA(hFind, &FindedFile));
+
 
     FindClose(hFind);
     return;
@@ -77,7 +85,17 @@ int main(int argc, char** argv)
 
     try
     {
-        FindTextFiles(DIRECTORY);
+        vector <string> PathesToTextFiles = vector <string>();
+
+        thread Finding = thread(FindPathesToTextFiles, std::ref(DIRECTORY), std::ref(PathesToTextFiles));
+
+        thread Sorting = thread(RemovePathesToTextFilesWithoutSpecifedText, std::ref(PathesToTextFiles), std::ref(TEXT));
+
+        Finding.join();
+        Sorting.join();
+
+        for (UINT i = 0; i < PathesToTextFiles.size(); i++)
+            cout << PathesToTextFiles[i] << endl;
     }
     catch (const exception& ex)
     {
