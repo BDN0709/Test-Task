@@ -3,18 +3,39 @@
 #include <string>
 #include <vector>
 #include <thread>
-#include <chrono>
 #include <iostream>
 
 using namespace std;
+
+inline const bool IsTextFile(const WIN32_FIND_DATAA& _File)
+{
+    const string FullFileName = _File.cFileName;
+
+    return (FullFileName.find(".txt", FullFileName.size() - 5) != string::npos);
+}
+
+inline const bool ContainsSpecifedText(const string& _FullPath, const string& _Text)
+{
+    ifstream fin(_FullPath.c_str());
+    string str = "";
+
+    while (getline(fin, str))
+        if (str.find(_Text) != string::npos)
+        {
+            fin.close();
+            return true;
+        }
+
+    return false;
+}
 
 inline const void FindTextFiles(const string& _Path)
 {
     string newPath = _Path + "\\*.*";
 
-    WIN32_FIND_DATAA Finder = WIN32_FIND_DATAA();
+    WIN32_FIND_DATAA FindedFile = WIN32_FIND_DATAA();
 
-    HANDLE hFind = FindFirstFileA(newPath.c_str(), &Finder);
+    HANDLE hFind = FindFirstFileA(newPath.c_str(), &FindedFile);
 
     if (hFind == INVALID_HANDLE_VALUE)
     {
@@ -24,14 +45,17 @@ inline const void FindTextFiles(const string& _Path)
 
     do
     {
-        if (Finder.dwFileAttributes == FILE_ATTRIBUTE_DIRECTORY && Finder.cFileName[0] != '.')
-            FindTextFiles(_Path + "\\" + Finder.cFileName);
-        else if (Finder.cFileName[0] == '.')
+        if (FindedFile.dwFileAttributes == FILE_ATTRIBUTE_DIRECTORY && FindedFile.cFileName[0] != '.')
+            FindTextFiles(_Path + "\\" + FindedFile.cFileName);
+        else if (FindedFile.cFileName[0] == '.')
             continue;
         else
-            cout << _Path << '\\' << Finder.cFileName << endl;
+        {
+            if (IsTextFile(FindedFile))
+                cout << _Path << '\\' << FindedFile.cFileName << endl;
+        }
 
-    } while (FindNextFileA(hFind, &Finder));
+    } while (FindNextFileA(hFind, &FindedFile));
 
     FindClose(hFind);
     return;
