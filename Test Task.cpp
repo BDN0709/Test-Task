@@ -3,39 +3,60 @@
 #include <string>
 #include <vector>
 #include <thread>
-#include <algorithm>
 #include <iostream>
 
 using namespace std;
 
-inline const bool IsTextFile(const WIN32_FIND_DATAA& _File)
-{
-    const string FullFileName = _File.cFileName;
+inline const void FindPathesToTextFiles(const string& _Path, vector <string>& TextFilesList);
 
-    return (FullFileName.find(".cpp", FullFileName.size() - 5) != string::npos);
+inline const bool IsTextFile(const WIN32_FIND_DATAA& _File);
+
+inline const bool ContainsSpecifedText(const string& _FullPath, const string& _Text);
+
+inline const void RemovePathesToTextFilesWithoutSpecifedText(vector <string>& PathesList, const string& _Text);
+
+
+int main(int argc, char** argv)
+{
+	SetConsoleCP(1251);
+	SetConsoleOutputCP(1251);
+
+	if (argc < 3)
+	{
+		cout << "Directory path or text is not stated!" << endl;
+		return -1;
+	}
+
+	const string DIRECTORY = argv[1];
+	const string TEXT = argv[2];
+
+    try
+    {
+        vector <string> PathesToTextFiles = vector <string>();
+
+        cout << "Processing..." << endl;
+
+        FindPathesToTextFiles(DIRECTORY, PathesToTextFiles);
+
+        RemovePathesToTextFilesWithoutSpecifedText(PathesToTextFiles, TEXT);
+
+        system("cls");
+
+        cout << "All text files in directory \"" << DIRECTORY << "\" that contain \"" << TEXT << "\":" << endl << endl;
+        for (UINT i = 0; i < PathesToTextFiles.size(); i++)
+            cout << PathesToTextFiles[i] << endl;
+    }
+    catch (const exception& ex)
+    {
+        cout << "Runtime Error: " << ex.what() << endl;
+
+        return -3;
+    }
+
+	return 0;
 }
 
-inline const bool ContainsSpecifedText(const string& _FullPath, const string& _Text)
-{
-    ifstream fin(_FullPath.c_str());
-    string str = "";
-
-    while (getline(fin, str))
-        if (str.find(_Text) != string::npos)
-        {
-            fin.close();
-            return true;
-        }
-
-    return false;
-}
-
-inline const void RemovePathesToTextFilesWithoutSpecifedText(vector <string>& PathesList, const string& _Text)
-{
-
-}
-
-inline const void FindPathesToTextFiles(const string& _Path, vector <string>& TextFilesList)
+inline const void FindPathesToTextFiles(const string& _Path, vector<string>& TextFilesList)
 {
     string newPath = _Path + "\\*.*";
 
@@ -57,10 +78,7 @@ inline const void FindPathesToTextFiles(const string& _Path, vector <string>& Te
             continue;
         else
             if (IsTextFile(FindedFile))
-            {
-                cout << _Path << '\\' << FindedFile.cFileName << endl;
                 TextFilesList.push_back(_Path + '\\' + FindedFile.cFileName);
-            }
 
     } while (FindNextFileA(hFind, &FindedFile));
 
@@ -69,40 +87,37 @@ inline const void FindPathesToTextFiles(const string& _Path, vector <string>& Te
     return;
 }
 
-int main(int argc, char** argv)
+inline const bool IsTextFile(const WIN32_FIND_DATAA& _File)
 {
-	SetConsoleCP(1251);
-	SetConsoleOutputCP(1251);
+    const string FullFileName = _File.cFileName;
 
-	if (argc < 3)
-	{
-		cout << "Directory path or text is not stated!" << endl;
-		return -1;
-	}
+    return (FullFileName.find(".txt", FullFileName.size() - 5) != string::npos);
+}
 
-	const string DIRECTORY = argv[1];
-	const string TEXT = argv[2];
+inline const bool ContainsSpecifedText(const string& _FullPath, const string& _Text)
+{
+    ifstream fin(_FullPath.c_str());
+    string str = "";
 
-    try
-    {
-        vector <string> PathesToTextFiles = vector <string>();
+    while (getline(fin, str))
+        if (str.find(_Text) != string::npos)
+        {
+            fin.close();
+            return true;
+        }
 
-        thread Finding = thread(FindPathesToTextFiles, std::ref(DIRECTORY), std::ref(PathesToTextFiles));
+    return false;
+}
 
-        thread Sorting = thread(RemovePathesToTextFilesWithoutSpecifedText, std::ref(PathesToTextFiles), std::ref(TEXT));
+inline const void RemovePathesToTextFilesWithoutSpecifedText(vector<string>& PathesList, const string& _Text)
+{
+    vector <string> NewPathesList;
 
-        Finding.join();
-        Sorting.join();
+    for (int i = 0; i < PathesList.size(); i++)
+        if (ContainsSpecifedText(PathesList[i], _Text))
+            NewPathesList.push_back(PathesList[i]);
 
-        for (UINT i = 0; i < PathesToTextFiles.size(); i++)
-            cout << PathesToTextFiles[i] << endl;
-    }
-    catch (const exception& ex)
-    {
-        cout << "Runtime Error: " << ex.what() << endl;
+    PathesList = NewPathesList;
 
-        return -3;
-    }
-
-	return 0;
+    return;
 }
